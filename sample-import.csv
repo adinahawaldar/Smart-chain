@@ -1,0 +1,5 @@
+id,vehicleId,source,destination,cargoType,temperatureC,riskScore,etaMinutes
+S201,TRK-7701,Lucknow,Bhopal,FMCG,22,18,300
+S202,TRK-8802,Nagpur,Indore,Textiles,28,35,240
+S203,TRK-9903,Coimbatore,Kochi,Electronics,20,22,180
+S204,TRK-1104,Chandigarh,Amritsar,Pharmaceuticals,-2,40,120
