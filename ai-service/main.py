@@ -39,11 +39,6 @@ try:
 except ImportError:
     print("⚠️  python-dotenv not installed — run: pip install python-dotenv")
 
-<<<<<<< HEAD
-# ── Gemini Setup ───────────────────────────��──────────────────────────────────
-=======
-# ── Gemini Setup ──────────────────────────────────────────────────────────────
->>>>>>> 3c95eaa62eae174f8612007972778fdf2e1ec6ec
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'")
 gemini_model   = None
 GEMINI_ENABLED = False
@@ -136,13 +131,6 @@ class ChatResponse(BaseModel):
     response:   str
     confidence: float = 1.0
     source:     str   = "gemini-1.5-flash"
-<<<<<<< HEAD
-    # compatibility fields
-    reply:      Optional[str] = None
-    mode:       Optional[str] = None
-=======
->>>>>>> 3c95eaa62eae174f8612007972778fdf2e1ec6ec
-
 
 # ── Disruption Config ─────────────────────────────────────────────────────────
 
@@ -497,16 +485,8 @@ def chat_response(req: ChatRequest):
     ctx   = req.context or {}
 
     if not query:
-<<<<<<< HEAD
-        text = "Please ask me something about your fleet."
-        return ChatResponse(
-            response=text,
-            reply=text,
-            mode="rule",
-=======
         return ChatResponse(
             response="Please ask me something about your fleet.",
->>>>>>> 3c95eaa62eae174f8612007972778fdf2e1ec6ec
             source="rule-based",
         )
 
@@ -517,30 +497,15 @@ def chat_response(req: ChatRequest):
             response = gemini_model.generate_content(prompt)
             text     = response.text.strip()
             if text and len(text) > 10:
-<<<<<<< HEAD
-                return ChatResponse(
-                    response=text,
-                    reply=text,          # compatibility
-                    mode="ai",           # compatibility
-                    confidence=0.96,
-                    source="gemini-1.5-flash",
-                )
-=======
                 return ChatResponse(response=text, confidence=0.96, source="gemini-1.5-flash")
->>>>>>> 3c95eaa62eae174f8612007972778fdf2e1ec6ec
         except Exception as e:
             print(f"Gemini chat error: {e} — falling back to rule-based")
 
     # ── Rule-based fallback ───────────────────────────────────────────────────
     text = rule_based_response(query, ctx)
-<<<<<<< HEAD
-    return ChatResponse(
-        response=text,
-        reply=text,          # compatibility
-        mode="rule",         # compatibility
-        confidence=0.85,
-        source="rule-based-fallback",
-    )
-=======
     return ChatResponse(response=text, confidence=0.85, source="rule-based-fallback")
->>>>>>> 3c95eaa62eae174f8612007972778fdf2e1ec6ec
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
