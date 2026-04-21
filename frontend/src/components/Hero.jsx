@@ -96,10 +96,11 @@ const Hero = () => {
             <motion.button 
               whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.1)" }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/demo')}
               className="px-8 py-3 bg-white/5 backdrop-blur-md text-white text-sm font-semibold rounded-md border border-white/10 transition-all"
             >
               View Demo
+
             </motion.button>
           </motion.div>
         </div>

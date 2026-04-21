@@ -1,14 +1,7 @@
-# Fix Hero ReferenceError in App.jsx
+# Login to Dashboard Redirect Task
 
-## Plan Steps
-- [x] Step 1: Fix import in frontend/src/App.jsx
-- [x] Step 2: Clean up Hero.jsx  
-- [x] Step 3: Test application
-- [x] Step 4: Complete task
-- [x] Step 5: Add Navbar/Footer to layout by using Home.jsx on "/"
+## Steps:
+- [x] Step 1: Edit frontend/src/App.jsx - Uncomment Dashboard import and route
+- [x] Step 2: Test the login redirect flow (login with Admin/123 now redirects to Dashboard)
+- [x] Step 3: Mark complete
 
-**Double Navbar/Footer FIXED** ✅
-**Demo button feedback**
-- [x] Added "/dashboard" → Dashboard.jsx route ✅
-
-**ALL COMPLETE** ✅

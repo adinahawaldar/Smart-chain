@@ -30,6 +30,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './components/Dashboard';
+import SmartChainDemo from '../src/pages/SmartChainDemo'
 
 function App() {
   return (
@@ -38,6 +39,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/demo" element={<SmartChainDemo />} />
+
       </Routes>
     </Router>
   );
