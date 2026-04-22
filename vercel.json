@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd frontend &amp;&amp; npm ci &amp;&amp; npm run build",
+  "outputDirectory": "frontend/dist",
+  "devCommand": "cd frontend &amp;&amp; npm run dev"
+}
