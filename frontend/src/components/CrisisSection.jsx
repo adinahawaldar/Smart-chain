@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-// --- ICONS (Refined to 20px for a smaller footprint) ---
+// --- ICONS (Refined to pure monochrome) ---
 const IconVisibility = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -28,61 +28,58 @@ const IconRigidity = () => (
 );
 
 const crisisData = [
-  { icon: <IconVisibility />, title: 'Visibility Blackout', desc: 'Fragmented data creates blind spots between hubs, stalling real-time decisions.' },
-  { icon: <IconCascade />, title: 'Cascade Effect', desc: 'Single port delays ripple into warehouse stock-outs thousands of miles away.' },
-  { icon: <IconFirefighting />, title: 'Reactive Strategy', desc: 'Teams spend 80% of time manually fixing disruptions that already occurred.' },
-  { icon: <IconRigidity />, title: 'Structural Rigidity', desc: 'Brittle corridors lack the agility required to pivot during global crises.' },
+  { icon: <IconVisibility />, title: '01. Visibility Blackout', desc: 'Fragmented data creates blind spots between hubs, stalling real-time decisions.' },
+  { icon: <IconCascade />, title: '02. Cascade Effect', desc: 'Single port delays ripple into warehouse stock-outs thousands of miles away.' },
+  { icon: <IconFirefighting />, title: '03. Reactive Strategy', desc: 'Teams spend 80% of time manually fixing disruptions that already occurred.' },
+  { icon: <IconRigidity />, title: '04. Structural Rigidity', desc: 'Brittle corridors lack the agility required to pivot during global crises.' },
 ];
 
 const ProfessionalCrisis = () => {
   return (
-    <section className="w-full bg-white py-20 px-6 lg:px-12 font-sans antialiased">
-      <div className="max-w-6xl mx-auto">
+    <section className="w-full bg-white py-24 px-6 lg:px-24 font-sans antialiased">
+      <div className="max-w-[1440px] mx-auto">
         
-        <div className="mb-12 border-l-2  pl-6">
-          <motion.p 
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            className="text-[10px] uppercase tracking-[0.2em] text-blue-600 font-bold mb-1"
-          >
-          </motion.p>
+        {/* Header Section */}
+        <div className="mb-16">
           <motion.h2 
-            initial={{ opacity: 0, x: -10 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            className="text-3xl font-bold text-slate-900 tracking-tight"
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: false }}
+            className="text-4xl font-bold text-black tracking-tight"
           >
             The Legacy Logistics Crisis
           </motion.h2>
         </div>
 
         {/* Minimal Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {crisisData.map((item, idx) => (
             <motion.div 
               key={idx}
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1, duration: 0.5 }}
-              whileHover={{ y: -5 }}
-              className="group p-6 bg-slate-50 border border-slate-100 rounded-lg hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 hover:border-blue-200 transition-all duration-300 ease-out"
+              viewport={{ once: false }}
+              transition={{ delay: idx * 0.1, duration: 0.6 }}
+              className="group p-8 bg-white border border-gray-100 rounded-3xl hover:border-black transition-all duration-500 ease-out flex flex-col justify-between min-h-[280px]"
             >
-              {/* Icon - Minimal Square */}
-              <div className="w-10 h-10 rounded-md bg-white border border-slate-200 text-slate-400 flex items-center justify-center group-hover:border-blue-500 group-hover:text-blue-600 transition-colors duration-300 shadow-sm">
-                {item.icon}
+              <div>
+                <div className="text-black mb-10 transition-transform duration-500 group-hover:scale-110">
+                  {item.icon}
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-xl font-bold text-black tracking-tight">
+                    {item.title}
+                  </h4>
+                  <p className="text-sm text-gray-500 leading-relaxed font-medium">
+                    {item.desc}
+                  </p>
+                </div>
               </div>
 
-              <div className="mt-5 space-y-2">
-                <h4 className="text-base font-bold text-slate-900 tracking-tight">
-                  {item.title}
-                </h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  {item.desc}
-                </p>
-              </div>
-
-              {/* Minimal Interactive Accent */}
-              <div className="mt-4 flex items-center gap-2">
-                <div className="h-[2px] w-4 bg-slate-200 group-hover:w-8 group-hover:bg-blue-600 transition-all duration-300"></div>
+              {/* Minimal Line Detail */}
+              <div className="mt-8 pt-6 border-t border-gray-50">
+                <div className="h-[1px] w-0 bg-black group-hover:w-full transition-all duration-700" />
               </div>
             </motion.div>
           ))}

@@ -30,62 +30,67 @@ const caseStudies = [
 
 const CaseStudies = () => {
   return (
-    <section className="w-full bg-[#fcfcfc] py-24 px-8 lg:px-16 font-sans antialiased border-t border-slate-100">
-      <div className="max-w-7xl mx-auto">
+    <section className="w-full bg-[#fcfcfc] py-24 px-8 lg:px-24 font-sans antialiased border-t border-gray-100">
+      <div className="max-w-[1440px] mx-auto">
         
         {/* Section Header */}
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-16 gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-20 gap-6">
           <div className="max-w-2xl">
-            <motion.div 
-              initial={{ opacity: 0, x: -10 }}
-              whileInView={{ opacity: 1, x: 0 }}
+            <motion.h2 
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: false }}
-              className="flex items-center gap-3 mb-4"
+              className="text-4xl md:text-5xl font-bold text-black tracking-tighter"
             >
-              <div className="" />
-            </motion.div>
-            <h2 className="text-4xl font-bold text-slate-900 tracking-tight">Intelligence in Action</h2>
+              Intelligence in Action
+            </motion.h2>
           </div>
-          <p className="text-slate-500 text-sm max-w-xs leading-relaxed">
+          <motion.p 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            className="text-gray-500 text-sm max-w-xs leading-relaxed font-medium"
+          >
             Documented impacts of predictive orchestration across global corridors and volatile landscapes.
-          </p>
+          </motion.p>
         </div>
 
         {/* Corporate Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 border-t border-l border-slate-200">
+        <div className="grid grid-cols-1 lg:grid-cols-3 border-t border-l border-gray-200">
           {caseStudies.map((study, idx) => (
             <motion.div 
               key={idx}
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: false }}
-              transition={{ delay: idx * 0.15 }}
-              className="group p-10 border-r border-b border-slate-200 bg-white hover:bg-slate-50 transition-colors duration-500 flex flex-col min-h-[420px]"
+              transition={{ delay: idx * 0.15, duration: 0.6 }}
+              className="group p-10 border-r border-b border-gray-200 bg-white hover:bg-gray-50 transition-all duration-500 flex flex-col min-h-[450px]"
             >
               <div className="flex-1">
-                <div className="flex items-center justify-between mb-8">
-                  <span className="font-mono text-[10px] text-slate-400 uppercase tracking-widest">{study.category}</span>
-                  <div className="w-2 h-2 rounded-full bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="flex items-center justify-between mb-10">
+                  <span className="font-bold text-[10px] text-gray-400 uppercase tracking-[0.2em]">{study.category}</span>
+                  {/* Replaced blue dot with a sleek black indicator */}
+                  <div className="w-1.5 h-1.5 rounded-full bg-black opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
                 
-                <h3 className="text-2xl font-bold text-slate-900 mb-2 leading-tight">
+                <h3 className="text-2xl font-bold text-black mb-3 leading-tight tracking-tight">
                   {study.title}
                 </h3>
-                <p className="text-blue-600 font-bold text-lg mb-6">
+                {/* Metric now in Bold Black */}
+                <p className="text-black font-extrabold text-xl mb-8 tracking-tighter">
                   {study.metric}
                 </p>
-                <p className="text-sm text-slate-500 leading-relaxed font-normal">
+                <p className="text-sm text-gray-500 leading-relaxed font-medium">
                   {study.desc}
                 </p>
               </div>
 
               {/* Technical Footer */}
-              <div className="mt-12 pt-6 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter italic">Source: {study.source}</span>
+              <div className="mt-12 pt-8 border-t border-gray-50 flex items-center justify-between">
+                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">Source: {study.source}</span>
                 <motion.a 
                   href={study.link}
-                  whileHover={{ x: 3 }}
-                  className="text-blue-600 text-xs font-bold flex items-center gap-2 group/link"
+                  whileHover={{ x: 5 }}
+                  className="text-black text-xs font-black flex items-center gap-2 group/link tracking-widest"
                 >
                   FULL REPORT
                   <span className="text-lg leading-none transition-transform group-hover/link:translate-x-1">→</span>
