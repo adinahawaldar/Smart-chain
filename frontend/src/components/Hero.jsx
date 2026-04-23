@@ -31,7 +31,7 @@ const Hero = () => {
   return (
     <section className="relative w-full min-h-screen flex items-center justify-center bg-white p-4 sm:p-5 font-sans antialiased overflow-hidden">
       
-      <div className="relative w-full h-[95vh] flex items-center rounded-[2rem] overflow-hidden shadow-sm">
+      <div className="relative w-full h-[95vh] flex items-center rounded-[1rem] overflow-hidden shadow-sm">
         
         {/* Background Image */}
         <motion.div 

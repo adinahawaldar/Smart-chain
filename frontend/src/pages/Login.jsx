@@ -12,11 +12,11 @@ const Login = () => {
     e.preventDefault();
     // Logic preserved as requested
     if (username === 'Admin' && password === '123') {
-      navigate('/dashboard');
+      navigate('/dashboardpage');
     } else if (username === 'Manager' && password === '456') {
-      navigate('/dashboard');
+      navigate('/dashboardpage');
     } else if (username === 'User' && password === '789') {
-      navigate('/dashboard');
+      navigate('/dashboardpage');
     } else {
       setError('Identity verification failed.');
     }
@@ -153,3 +153,4 @@ const Login = () => {
 };
 
 export default Login;
+

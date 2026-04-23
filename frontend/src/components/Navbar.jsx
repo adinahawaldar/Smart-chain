@@ -5,7 +5,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const navLinks = ['Dashboard', 'Map', 'Shipments', 'Simulation'];
+  const navLinks = ['Home', 'Dashboard', 'Shipments', 'Simulation'];
 
   return (
     <nav className="absolute top-0 left-0 w-full z-50 font-sans">
