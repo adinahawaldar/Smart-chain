@@ -36,4 +36,17 @@ async function healthCheck() {
   }
 }
 
-module.exports = { simulateRisk, chatResponse, healthCheck };
+async function rerouteRecommendation(shipment, disruption) {
+  try {
+    const res = await aiClient.post('/reroute-recommendation', { shipment, disruption });
+    return res.data;
+  } catch (err) {
+    console.error('AI service /reroute-recommendation failed:', err.message);
+    if (err.response) {
+      console.error('AI service response error data:', JSON.stringify(err.response.data));
+    }
+    return null;
+  }
+}
+
+module.exports = { simulateRisk, chatResponse, healthCheck, rerouteRecommendation };

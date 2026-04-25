@@ -32,6 +32,8 @@ import Login from './pages/Login';
 // import Dashboard from './components/Dashboard';
 import SmartChainDemo from '../src/pages/SmartChainDemo'
 import DashboardPage from '../src/pages/DashboardPage'
+import MapsPage from '../src/pages/MapsPage'
+import ShipmentDetailsPage from '../src/pages/ShipmentDetailsPage'
 
 function App() {
   return (
@@ -40,7 +42,9 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/dashboardpage" element={<DashboardPage />} />
-                <Route path="/demo" element={<SmartChainDemo />} />
+        <Route path="/maps" element={<MapsPage />} />
+        <Route path="/shipment/:id" element={<ShipmentDetailsPage />} />
+        <Route path="/demo" element={<SmartChainDemo />} />
 
       </Routes>
     </Router>

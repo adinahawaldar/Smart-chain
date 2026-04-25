@@ -1,191 +1,115 @@
+const fs = require('fs');
+const path = require('path');
 const Shipment = require('../models/Shipment');
 const Event = require('../models/Event');
 const state = require('../state/runtimeState');
 
-const SEED_SHIPMENTS = [
-  {
-    id: 'S101',
-    vehicleId: 'TRK-4821',
-    source: 'Mumbai',
-    destination: 'Delhi',
-    cargoType: 'Electronics',
-    temperatureC: 22,
-    status: 'In Transit',
-    riskScore: 45,
-    etaMinutes: 855,
-    progressPct: 30.3,
-    active: true,
-    speedKmph: 65,
-    headingDeg: 345,
-    speedFactor: 1.0,
-    route: [
-      { lat: 19.076, lng: 72.8777 },   // Mumbai
-      { lat: 22.3072, lng: 73.1812 },  // Vadodara
-      { lat: 23.0225, lng: 72.5714 },  // Ahmedabad
-      { lat: 24.5854, lng: 73.7125 },  // Udaipur
-      { lat: 26.9124, lng: 75.7873 },  // Jaipur
-      { lat: 28.6139, lng: 77.209 },   // Delhi
-    ],
-    currentLegIndex: 1,
-    legProgress: 0.3,
-    currentPosition: { lat: 22.5218, lng: 72.9978 },
-    lastUpdatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'S102',
-    vehicleId: 'TRK-3304',
-    source: 'Bangalore',
-    destination: 'Hyderabad',
-    cargoType: 'Pharmaceuticals',
-    temperatureC: -5,
-    status: 'In Transit',
-    riskScore: 28,
-    etaMinutes: 216,
-    progressPct: 31.7,
-    active: true,
-    speedKmph: 70,
-    headingDeg: 20,
-    speedFactor: 1.0,
-    route: [
-      { lat: 12.9716, lng: 77.5946 },  // Bangalore
-      { lat: 15.8281, lng: 78.0373 },  // Kurnool
-      { lat: 17.385, lng: 78.4867 },   // Hyderabad
-    ],
-    currentLegIndex: 0,
-    legProgress: 0.5,
-    currentPosition: { lat: 14.3999, lng: 77.816 },
-    lastUpdatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'S103',
-    vehicleId: 'TRK-5917',
-    source: 'Chennai',
-    destination: 'Kolkata',
-    cargoType: 'Automotive Parts',
-    temperatureC: 28,
-    status: 'In Transit',
-    riskScore: 62,
-    etaMinutes: 1363,
-    progressPct: 5.3,
-    active: true,
-    speedKmph: 60,
-    headingDeg: 8,
-    speedFactor: 1.0,
-    route: [
-      { lat: 13.0827, lng: 80.2707 },  // Chennai
-      { lat: 16.5062, lng: 80.648 },   // Vijayawada
-      { lat: 17.6868, lng: 83.2185 },  // Visakhapatnam
-      { lat: 20.2961, lng: 85.8245 },  // Bhubaneswar
-      { lat: 22.5726, lng: 88.3639 },  // Kolkata
-    ],
-    currentLegIndex: 0,
-    legProgress: 0.2,
-    currentPosition: { lat: 13.7674, lng: 80.3462 },
-    lastUpdatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'S104',
-    vehicleId: 'TRK-2290',
-    source: 'Pune',
-    destination: 'Ahmedabad',
-    cargoType: 'Textiles',
-    temperatureC: 35,
-    status: 'Near Destination',
-    riskScore: 82,
-    etaMinutes: 96,
-    progressPct: 77.1,
-    active: true,
-    speedKmph: 45,
-    headingDeg: 350,
-    speedFactor: 0.7,
-    route: [
-      { lat: 18.5204, lng: 73.8567 },  // Pune
-      { lat: 19.9975, lng: 73.7898 },  // Nashik
-      { lat: 21.1702, lng: 72.8311 },  // Surat
-      { lat: 23.0225, lng: 72.5714 },  // Ahmedabad
-    ],
-    currentLegIndex: 2,
-    legProgress: 0.4,
-    currentPosition: { lat: 21.9111, lng: 72.7272 },
-    lastUpdatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'S105',
-    vehicleId: 'TRK-1155',
-    source: 'Delhi',
-    destination: 'Jaipur',
-    cargoType: 'FMCG',
-    temperatureC: 20,
-    status: 'At Hub',
-    riskScore: 15,
-    etaMinutes: 240,
-    progressPct: 0,
-    active: false,
-    speedKmph: 0,
-    headingDeg: 220,
-    speedFactor: 1.0,
-    route: [
-      { lat: 28.6139, lng: 77.209 },   // Delhi
-      { lat: 27.4924, lng: 77.6737 },  // Bharatpur
-      { lat: 26.9124, lng: 75.7873 },  // Jaipur
-    ],
-    currentLegIndex: 0,
-    legProgress: 0,
-    currentPosition: { lat: 28.6139, lng: 77.209 },
-    lastUpdatedAt: new Date().toISOString(),
-  },
-];
+// Coordinate lookup for cities in the CSV to ensure movement works
+const CITY_COORDS = {
+  'Mumbai': { lat: 19.0760, lng: 72.8777 },
+  'Delhi': { lat: 28.6139, lng: 77.2090 },
+  'Chennai': { lat: 13.0827, lng: 80.2707 },
+  'Kolkata': { lat: 22.5726, lng: 88.3639 },
+  'Bangalore': { lat: 12.9716, lng: 77.5946 },
+  'Hyderabad': { lat: 17.3850, lng: 78.4867 },
+  'Ahmedabad': { lat: 23.0225, lng: 72.5714 },
+  'Dubai': { lat: 25.2048, lng: 55.2708 },
+  'Singapore': { lat: 1.3521, lng: 103.8198 },
+  'London': { lat: 51.5074, lng: -0.1278 },
+  'Bangkok': { lat: 13.7563, lng: 100.5018 },
+  'Rotterdam': { lat: 51.9225, lng: 4.4792 },
+  'San Francisco': { lat: 37.7749, lng: -122.4194 },
+  'Nairobi': { lat: -1.2921, lng: 36.8219 },
+  'Sydney': { lat: -33.8688, lng: 151.2093 },
+  'New York': { lat: 40.7128, lng: -74.0060 },
+  'Tokyo': { lat: 35.6762, lng: 139.6503 },
+  'Paris': { lat: 48.8566, lng: 2.3522 },
+  'Melbourne': { lat: -37.8136, lng: 144.9631 },
+  'Frankfurt': { lat: 50.1109, lng: 8.6821 },
+  'Toronto': { lat: 43.6532, lng: -79.3832 },
+  'Amsterdam': { lat: 52.3676, lng: 4.9041 },
+  'Los Angeles': { lat: 34.0522, lng: -118.2437 }
+};
+
+function getCoords(city) {
+  return CITY_COORDS[city] || { lat: 20 + Math.random() * 10, lng: 75 + Math.random() * 10 };
+}
+
+function loadShipmentsFromCSV() {
+  try {
+    const csvPath = path.resolve(process.cwd(), '../sample-import.csv');
+    console.log('📖 Loading shipments from:', csvPath);
+    if (!fs.existsSync(csvPath)) {
+      console.error('❌ CSV file not found at:', csvPath);
+      return [];
+    }
+    const csvContent = fs.readFileSync(csvPath, 'utf-8');
+    const lines = csvContent.split('\n').filter(l => l.trim() !== '');
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    
+    const shipments = lines.slice(1).map(line => {
+      const values = line.split(',').map(v => v.trim());
+      const row = {};
+      headers.forEach((h, i) => row[h] = values[i]);
+      
+      const start = getCoords(row.source);
+      const end = getCoords(row.destination);
+      
+      return {
+        id: row.id,
+        vehicleId: row.vehicleId,
+        source: row.source,
+        destination: row.destination,
+        cargoType: row.cargoType,
+        temperatureC: parseFloat(row.temperatureC) || 0,
+        status: 'In Transit',
+        riskScore: parseInt(row.riskScore) || 0,
+        etaMinutes: parseInt(row.etaMinutes) || 0,
+        progressPct: Math.floor(Math.random() * 60), 
+        active: true,
+        speedKmph: 60 + Math.random() * 20,
+        headingDeg: Math.floor(Math.random() * 360),
+        speedFactor: 1.0,
+        route: [start, end],
+        currentLegIndex: 0,
+        legProgress: Math.random() * 0.5,
+        currentPosition: start,
+        lastUpdatedAt: new Date().toISOString(),
+      };
+    });
+    return shipments;
+  } catch (err) {
+    console.error('❌ Failed to load CSV for seed:', err.message);
+    return [];
+  }
+}
 
 const SEED_EVENTS = [
   {
     type: 'status',
-    shipmentId: 'S101',
-    message: 'S101 departed Mumbai hub — route to Delhi confirmed',
+    message: 'Global shipment fleet initialized from enterprise ledger',
     severity: 'info',
-    timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-  },
-  {
-    type: 'geofence',
-    shipmentId: 'S101',
-    message: 'S101 entered Vadodara logistics zone',
-    severity: 'info',
-    timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
-  },
-  {
-    type: 'risk',
-    shipmentId: 'S104',
-    message: 'S104 risk score elevated to 82 — temperature spike detected',
-    severity: 'danger',
-    timestamp: new Date(Date.now() - 3600000 * 1.5).toISOString(),
-  },
-  {
-    type: 'status',
-    shipmentId: 'S102',
-    message: 'S102 departed Bangalore hub — cold-chain verified',
-    severity: 'info',
-    timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
-  },
-  {
-    type: 'geofence',
-    shipmentId: 'S103',
-    message: 'S103 entered coastal highway segment near Vijayawada',
-    severity: 'warning',
-    timestamp: new Date(Date.now() - 3600000 * 0.5).toISOString(),
-  },
+    timestamp: new Date().toISOString(),
+  }
 ];
 
 async function seedIfEmpty() {
   try {
+    const csvShipments = loadShipmentsFromCSV();
     const count = await Shipment.countDocuments();
-    if (count === 0) {
-      await Shipment.insertMany(SEED_SHIPMENTS);
+    
+    if ((count === 0 || count < 10) && csvShipments.length > 0) {
+      await Shipment.deleteMany({}); 
+      await Shipment.insertMany(csvShipments);
+      await Event.deleteMany({});
       await Event.insertMany(SEED_EVENTS);
-      console.log('🌱 Seeded', SEED_SHIPMENTS.length, 'shipments and', SEED_EVENTS.length, 'events');
+      console.log('🌱 Seeded/Updated', csvShipments.length, 'shipments from CSV');
     } else {
-      console.log('ℹ️  Database already has data — skipping seed');
+      console.log('ℹ️ Database already has enough data — skipping seed');
     }
 
-    // Load into runtime state
     const dbShipments = await Shipment.find().lean();
     state.shipments = dbShipments.map(s => ({
       ...s,
@@ -195,16 +119,22 @@ async function seedIfEmpty() {
       _prevRisk: s.riskScore,
     }));
 
+    // FORCE TEST CASE: Ensure S302 is high risk for user testing
+    const testShipment = state.shipments.find(s => s.id === 'S302');
+    if (testShipment) testShipment.riskScore = 85;
+
     const dbEvents = await Event.find().sort({ timestamp: -1 }).limit(50).lean();
     state.events = dbEvents.map(e => ({ ...e, _id: undefined, __v: undefined }));
 
     console.log(`✅ Loaded ${state.shipments.length} shipments into runtime state`);
   } catch (err) {
-    // MongoDB not available — use in-memory seed data
-    console.warn('⚠️  MongoDB unavailable — using in-memory seed data');
-    state.shipments = SEED_SHIPMENTS.map(s => ({ ...s, speedFactor: s.speedFactor || 1.0, _prevRisk: s.riskScore }));
-    state.events = [...SEED_EVENTS].reverse();
+    console.warn('⚠️ Seed failed:', err.message);
+    const csvShipments = loadShipmentsFromCSV();
+    state.shipments = csvShipments.map(s => ({ ...s, speedFactor: s.speedFactor || 1.0, _prevRisk: s.riskScore }));
+    const ts = state.shipments.find(s => s.id === 'S302');
+    if (ts) ts.riskScore = 85;
+    state.events = [...SEED_EVENTS];
   }
 }
 
-module.exports = { seedIfEmpty, SEED_SHIPMENTS };
+module.exports = { seedIfEmpty };

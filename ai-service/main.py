@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
-# ── Robust .env loading (works on Windows regardless of working directory) ────
+# --- Robust .env loading (works on Windows regardless of working directory) ---
 try:
     from dotenv import load_dotenv
     # Try multiple possible locations for the .env file
@@ -31,19 +31,19 @@ try:
     for _p in _env_paths:
         if _p.exists():
             load_dotenv(dotenv_path=_p, override=True)
-            print(f"✅  Loaded .env from: {_p}")
+            print(f"OK  Loaded .env from: {_p}")
             _loaded = True
             break
     if not _loaded:
-        print("⚠️  No .env file found — checking system environment variables")
+        print("WARN  No .env file found --- checking system environment variables")
 except ImportError:
-    print("⚠️  python-dotenv not installed — run: pip install python-dotenv")
+    print("WARN  python-dotenv not installed --- run: pip install python-dotenv")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'")
 gemini_model   = None
 GEMINI_ENABLED = False
 
-print(f"🔑  GEMINI_API_KEY detected: {'YES (length=' + str(len(GEMINI_API_KEY)) + ')' if GEMINI_API_KEY else 'NO — key is empty'}")
+print(f"KEY  GEMINI_API_KEY detected: {'YES (length=' + str(len(GEMINI_API_KEY)) + ')' if GEMINI_API_KEY else 'NO - key is empty'}")
 
 _INVALID_VALUES = ("your_gemini_api_key_here", "", "none", "null", "undefined")
 
@@ -51,6 +51,12 @@ if GEMINI_API_KEY and GEMINI_API_KEY.lower() not in _INVALID_VALUES:
     try:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
+        
+        print("DEBUG  Available models:")
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                print(f"  - {m.name}")
+
         gemini_model = genai.GenerativeModel(
             model_name="gemini-1.5-flash",
             generation_config={
@@ -70,15 +76,15 @@ if GEMINI_API_KEY and GEMINI_API_KEY.lower() not in _INVALID_VALUES:
         test = gemini_model.generate_content("Say OK")
         _ = test.text  # will raise if key is invalid
         GEMINI_ENABLED = True
-        print("✅  Gemini 1.5 Flash copilot ENABLED and verified!")
+        print("OK  Gemini 1.5 Flash copilot ENABLED and verified!")
     except Exception as e:
-        print(f"❌  Gemini init/verify failed: {e}")
-        print("    → Check your API key at https://aistudio.google.com/apikey")
-        print("    → Falling back to rule-based responses")
+        print(f"ERR  Gemini init/verify failed: {e}")
+        print("    -> Check your API key at https://aistudio.google.com/apikey")
+        print("    -> Falling back to rule-based responses")
 else:
-    print("ℹ️  GEMINI_API_KEY not set — using rule-based copilot")
-    print("    → Add your key to ai-service/.env file")
-    print("    → Get a free key at: https://aistudio.google.com/apikey")
+    print("INFO  GEMINI_API_KEY not set --- using rule-based copilot")
+    print("    -> Add your key to ai-service/.env file")
+    print("    -> Get a free key at: https://aistudio.google.com/apikey")
 
 
 # ── FastAPI App ───────────────────────────────────────────────────────────────
@@ -113,6 +119,9 @@ class ShipmentInput(BaseModel):
     cargoType:    Optional[str]   = "General"
     temperatureC: Optional[float] = None
 
+    class Config:
+        extra = "allow"
+
 class SimulateRequest(BaseModel):
     disruption: str = Field(..., description="storm | traffic | strike")
     shipments:  List[ShipmentInput]
@@ -131,6 +140,26 @@ class ChatResponse(BaseModel):
     response:   str
     confidence: float = 1.0
     source:     str   = "gemini-1.5-flash"
+
+class RerouteRequest(BaseModel):
+    shipment: ShipmentInput
+    disruption: Optional[str] = None
+
+    class Config:
+        extra = "allow"
+
+class RerouteOption(BaseModel):
+    name: str
+    description: str
+    costImpact: str
+    etaImpact: str
+    riskImpact: str
+    confidence: str
+
+class RerouteResponse(BaseModel):
+    shipmentId: str
+    analysis: str
+    options: List[RerouteOption]
 
 # ── Disruption Config ─────────────────────────────────────────────────────────
 
@@ -204,32 +233,22 @@ def build_chat_prompt(query: str, ctx: Dict[str, Any]) -> str:
     )
     delayed_summary = ", ".join(delayed) if delayed else "None"
 
-    return f"""You are SmartChain Copilot — an expert AI embedded in a real-time supply chain command center.
-
+    return f"""You are SmartChain Copilot - a real-time AI supply chain assistant powered by Gemini 1.5 Flash.
+    
 LIVE FLEET DATA:
 - Total shipments: {total_ct}
 - Active in transit: {active_ct}
-- High-risk shipments (risk ≥75):
+- High-risk (>= 75):
 {high_risk_summary}
 - Delayed shipments: {delayed_summary}
-- Active disruption simulation: {"YES — " + last_sim.upper() if sim_on and last_sim else "No"}
+- Active disruption: {"YES - " + last_sim.upper() if sim_on and last_sim else "No"}
 
-SYSTEM CONTEXT:
-- Risk scale: 0–39 Low | 40–74 Medium | 75–100 High (requires action)
-- Rerouting options:
-    Route A: −₹6,200 cost · +110 min ETA · −15 risk pts (budget, slower)
-    Route B: +₹18,400 cost · −25 min ETA · −22 risk pts (express, recommended for high risk)
-- Disruption impacts: storm=55% speed loss | traffic=28% | strike=75%
-- All routes are India-wide logistics corridors
-
-RESPONSE RULES:
-1. Be concise and actionable — max 120 words
-2. Use **bold** for shipment IDs, risk scores, and key numbers
-3. Always reference specific IDs (S101, S104, etc.) when present in context
-4. If recommending rerouting, state Route A or B with the trade-off clearly
-5. If no issues, confirm fleet is healthy confidently
-6. Respond like an expert operations manager, not a generic chatbot
-7. Use emojis sparingly — only for status indicators (🚨 ✅ ⚠️ 🔀)
+INSTRUCTIONS:
+1. Primary Goal: Help users monitor and manage their global fleet.
+2. Expertise: You handle logistics, risk, ETA, reroutes, and weather/environmental impacts.
+3. Weather Queries: If the user asks about weather, relate it to current fleet status.
+4. Be professional, concise (max 150 words), and use **bold** for IDs and scores.
+5. Reference specific IDs (e.g., S101) from the context when relevant.
 
 USER QUESTION: {query}
 
@@ -255,6 +274,46 @@ Write ONE sharp operational insight paragraph (max 55 words) for the operations 
 Insight:"""
 
 
+def build_reroute_prompt(shipment: ShipmentInput, disruption: Optional[str]) -> str:
+    dis_str = f"Current disruption: {disruption.upper()}" if disruption else "No active major disruption."
+    return f"""You are a logistics optimization AI.
+    
+SHIPMENT CONTEXT:
+- ID: {shipment.id}
+- Route: {shipment.source} to {shipment.destination}
+- Cargo: {shipment.cargoType}
+- Risk Score: {shipment.riskScore}/100
+- {dis_str}
+
+TASK:
+1. Analyze why this shipment needs rerouting (e.g., high risk, delays).
+2. Provide TWO distinct rerouting options (Route A and Route B).
+3. For each option, specify:
+   - Name (e.g., "Air Freight Express", "Coastal Rail Bypass")
+   - Cost Impact (e.g., "+$1,200", "-$400")
+   - ETA Impact (e.g., "-4 hours", "+2 days")
+   - Risk Impact (e.g., "-15 points")
+   - Confidence Score (e.g., "92%")
+   - A short description of the logic.
+
+OUTPUT FORMAT:
+Return ONLY a JSON object with this structure:
+{{
+  "analysis": "Brief 2-sentence explanation of why rerouting is needed.",
+  "options": [
+    {{
+      "name": "...",
+      "description": "...",
+      "costImpact": "...",
+      "etaImpact": "...",
+      "riskImpact": "...",
+      "confidence": "..."
+    }},
+    ...
+  ]
+}}
+"""
+
 # ── Rule-Based Fallback ───────────────────────────────────────────────────────
 
 def rule_based_response(query: str, ctx: Dict[str, Any]) -> str:
@@ -267,7 +326,10 @@ def rule_based_response(query: str, ctx: Dict[str, Any]) -> str:
     last_sim  = ctx.get("lastSimulation", None)
     top       = high_risk[0] if high_risk else None
 
-    if any(k in q for k in ["hello", "hi", "hey", "help", "what can", "who are"]):
+    # Use set intersection for precise word matching to avoid "hi" in "shipments"
+    words = set(q.split())
+    
+    if any(k in words for k in ["hello", "hi", "hey", "help"]) or "what can" in q or "who are" in q:
         return (
             "👋 Hello! I'm **SmartChain Copilot** — your AI logistics assistant.\n\n"
             "I have live visibility into your fleet. Ask me about:\n"
@@ -314,19 +376,33 @@ def rule_based_response(query: str, ctx: Dict[str, Any]) -> str:
             f"Click **Reroute** next to {top['id']} in the Shipment Registry to proceed."
         )
 
-    if any(k in q for k in ["simulation", "storm", "traffic", "strike", "disruption", "simulate", "weather"]):
-        if sim_on and last_sim:
+    if any(k in q for k in ["weather", "mumbai", "climate", "rain", "storm", "condition"]):
+        temp = random.randint(26, 32)
+        condition = random.choice(["Clear", "Partly Cloudy", "High Humidity", "Moderate Breeze"])
+        impact = "No immediate impact on transit speed."
+        if "mumbai" in q:
             return (
-                f"⚡ **{last_sim.upper()}** simulation is currently active fleet-wide.\n\n"
-                f"Speed factor has been reduced and risk scores elevated across all active shipments. "
-                f"Review the AI Insights panel for priority actions and use rerouting to mitigate critical exposure."
+                f"🌡️ **Mumbai Terminal Report**: {temp}°C | {condition}\n\n"
+                f"Live telemetry from **S101** and **S105** confirms stable transit conditions on the NH-48 corridor. "
+                f"{impact} Current effective speed factor: **1.0x**."
             )
         return (
-            "🌩 **Available disruption simulations:**\n\n"
-            "• **Storm** — 55% speed reduction · +35 avg risk\n"
-            "• **Traffic** — 28% speed reduction · +15 avg risk\n"
-            "• **Strike** — 75% speed reduction · +40 avg risk\n\n"
-            "Select a scenario in the **Simulation Engine** panel and click Run — results propagate instantly across all dashboard panels."
+            f"🌦️ **Regional Weather Update**: Average temperature is **{temp}°C** with **{condition}**.\n\n"
+            f"Logistics Impact: {impact} Fleet-wide speed factors are holding at nominal levels. "
+            f"Monitoring tropical depressions near coastal routes."
+        )
+
+    if any(k in q for k in ["simulation", "disruption", "simulate"]):
+        if sim_on and last_sim:
+            return (
+                f"⚡ **{last_sim.upper()}** disruption active. "
+                f"Current fleet risk increased by **{random.randint(20,30)}%**. "
+                "Immediate rerouting recommended for shipments in the high-risk zone."
+            )
+        return (
+            "🌩 **Simulation Engine Ready**\n\n"
+            "I can model **Storm**, **Traffic**, or **Strike** scenarios. Each disruption causes realistic chain-reaction delays. "
+            "Select a scenario from the Simulation Panel to see the impact live on the globe."
         )
 
     if any(k in q for k in ["speed", "slow", "fast", "performance", "km", "velocity"]):
@@ -506,6 +582,58 @@ def chat_response(req: ChatRequest):
     return ChatResponse(response=text, confidence=0.85, source="rule-based-fallback")
 
 
+@app.post("/reroute-recommendation", response_model=RerouteResponse)
+def reroute_recommendation(req: RerouteRequest):
+    s = req.shipment
+    
+    # Default fallback
+    fallback_response = RerouteResponse(
+        shipmentId=s.id,
+        analysis=f"Shipment {s.id} is experiencing elevated risk ({s.riskScore}/100). Rerouting is advised to avoid further delays.",
+        options=[
+            RerouteOption(
+                name="Express Air Corridor",
+                description="Shift to air freight for the remaining leg to bypass ground congestion.",
+                costImpact="+$4,500",
+                etaImpact="-12 hours",
+                riskImpact="-25 points",
+                confidence="98%"
+            ),
+            RerouteOption(
+                name="Secondary Rail Link",
+                description="Utilize the central rail corridor which is currently operating at 85% capacity.",
+                costImpact="+$800",
+                etaImpact="+4 hours",
+                riskImpact="-15 points",
+                confidence="82%"
+            )
+        ]
+    )
+
+    if GEMINI_ENABLED:
+        try:
+            prompt = build_reroute_prompt(s, req.disruption)
+            response = gemini_model.generate_content(prompt)
+            text = response.text.strip()
+            
+            # Clean JSON if Gemini adds markdown blocks
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                text = text.split("```")[1].strip()
+            
+            data = json.loads(text)
+            return RerouteResponse(
+                shipmentId=s.id,
+                analysis=data.get("analysis", fallback_response.analysis),
+                options=[RerouteOption(**opt) for opt in data.get("options", [])]
+            )
+        except Exception as e:
+            print(f"Gemini reroute error: {e} — using fallback")
+    
+    return fallback_response
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8001))
+    uvicorn.run(app, host="0.0.0.0", port=port)

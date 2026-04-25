@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import clsx from 'clsx'
 import { getRiskBand } from '../utils/risk'
 import { fmtEta, fmtProgress, fmtSpeed } from '../utils/format'
+import { Zap } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const STATUS_PILL = {
   'In Transit':       'bg-blue-100 text-blue-700 border-blue-200',
@@ -17,6 +19,7 @@ export default function ShipmentTable({ shipments, onReroute }) {
   const [sortCol, setSortCol]     = useState('riskScore')
   const [sortDir, setSortDir]     = useState('desc')
   const [filter,  setFilter]      = useState('all')
+  const navigate = useNavigate()
 
   function toggleSort(col) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -92,7 +95,7 @@ export default function ShipmentTable({ shipments, onReroute }) {
             {rows.map(s => {
               const band      = getRiskBand(s.riskScore)
               const effSpeed  = (s.speedKmph || 0) * (s.speedFactor || 1)
-              const canReroute= s.riskScore >= 75 && s.active
+              const canReroute= s.riskScore >= 70 && s.active
               return (
                 <tr
                   key={s.id}
@@ -155,9 +158,10 @@ export default function ShipmentTable({ shipments, onReroute }) {
                   <td className="py-3">
                     {canReroute ? (
                       <button
-                        onClick={() => onReroute(s)}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors active:scale-95"
+                        onClick={() => navigate(`/shipment/${s.id}`)}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
                       >
+                        <Zap size={12} />
                         Reroute
                       </button>
                     ) : s.status === 'Delivered' ? (

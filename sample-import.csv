@@ -1,6 +1,6 @@
 id,vehicleId,source,destination,cargoType,temperatureC,riskScore,etaMinutes
 S301,INT-9001,Mumbai,Dubai,Electronics,25,30,720
-S302,INT-9002,Chennai,Singapore,Pharmaceuticals,4,34,840
+S302,INT-9002,Chennai,Singapore,Pharmaceuticals,4,85,840
 S303,INT-9003,Kolkata,Bangkok,Textiles,29,28,900
 S304,INT-9004,Delhi,London,FMCG,18,35,1440
 S305,INT-9005,Mumbai,Rotterdam,Perishable,3,42,2880

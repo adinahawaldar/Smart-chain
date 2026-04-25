@@ -23,7 +23,7 @@ async function rerouteShipment(req, res) {
   const speedBoost = isRouteB ? 1.3 : 0.9;
   const costLabel = isRouteB ? 'Express Corridor B (+₹18,400)' : 'Alternate Route A (-₹6,200)';
 
-  shipment.riskScore = Math.max(10, shipment.riskScore - 20);
+  shipment.riskScore = 35; // Reset to safe level for demo
   shipment.speedKmph = Math.min(120, shipment.speedKmph * speedBoost);
   shipment.speedFactor = Math.min(1.2, (shipment.speedFactor || 1) * speedBoost);
   shipment.etaMinutes = isRouteB
@@ -46,12 +46,12 @@ async function rerouteShipment(req, res) {
   }
 
   // Persist to MongoDB if available
-  try {
-    await Shipment.findOneAndUpdate(
-      { id },
-      { riskScore: shipment.riskScore, speedKmph: shipment.speedKmph, etaMinutes: shipment.etaMinutes, status: shipment.status }
-    );
-  } catch {}
+  // try {
+  //   await Shipment.findOneAndUpdate(
+  //     { id },
+  //     { riskScore: shipment.riskScore, speedKmph: shipment.speedKmph, etaMinutes: shipment.etaMinutes, status: shipment.status }
+  //   );
+  // } catch {}
 
   res.json({ success: true, shipment, event });
 }
@@ -109,4 +109,20 @@ async function ingestCSV(req, res) {
   res.json({ imported, skipped, total: state.shipments.length });
 }
 
-module.exports = { getShipments, getTick, rerouteShipment, ingestCSV };
+async function getAIRecommendation(req, res) {
+  const { id } = req.params;
+  const shipment = state.shipments.find(s => s.id === id);
+  if (!shipment) return res.status(404).json({ error: 'Shipment not found' });
+
+  const { rerouteRecommendation } = require('../services/aiClient');
+  console.log(`[AI] Fetching recommendation for shipment ${id}...`);
+  const recommendation = await rerouteRecommendation(shipment, state.lastSimulation);
+  
+  if (!recommendation) {
+    return res.status(503).json({ error: 'AI service unavailable' });
+  }
+
+  res.json(recommendation);
+}
+
+module.exports = { getShipments, getTick, rerouteShipment, ingestCSV, getAIRecommendation };

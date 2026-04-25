@@ -175,43 +175,43 @@ export default function Chatbot() {
       {/* Chat panel */}
       {open && (
         <div
-          className="fixed bottom-24 right-6 z-40 flex flex-col animate-slide-up overflow-hidden rounded-2xl shadow-float glass-dark"
-          style={{ width: 390, maxWidth: 'calc(100vw - 2rem)', maxHeight: '72vh' }}
+          className="fixed bottom-24 right-6 z-40 flex flex-col animate-slide-up overflow-hidden rounded-3xl shadow-2xl bg-white border border-slate-100"
+          style={{ width: 400, maxWidth: 'calc(100vw - 2rem)', maxHeight: '72vh' }}
         >
           {/* Header */}
-          <div className="shrink-0 px-4 py-3 flex items-center justify-between bg-gradient-to-r from-indigo-700/80 to-blue-700/80 border-b border-indigo-600/30">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-base font-bold text-white">
+          <div className="shrink-0 px-6 py-4 flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold text-white shadow-inner">
                 ✦
               </div>
               <div>
-                <div className="text-white font-semibold text-sm leading-tight">SmartChain Copilot</div>
-                <div className="text-indigo-200 text-[11px] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-blue-300 rounded-full" />
+                <div className="text-white font-black text-sm uppercase tracking-wider leading-tight">AI Copilot</div>
+                <div className="text-blue-100 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 opacity-80">
+                  <span className="w-1.5 h-1.5 bg-blue-300 rounded-full animate-pulse" />
                   Gemini 1.5 Flash
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-emerald-300 text-xs">Online</span>
+            <div className="flex flex-col items-end">
+              <span className="text-white/60 text-[9px] font-black uppercase tracking-tighter">Secure Link</span>
+              <span className="text-emerald-300 text-[10px] font-black uppercase">Active</span>
             </div>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-[250px] bg-slate-50/30">
             {messages.map(msg => <Message key={msg.id} msg={msg} />)}
             <div ref={bottomRef} />
           </div>
 
           {/* Quick prompts — visible on fresh chat */}
           {messages.length <= 2 && (
-            <div className="shrink-0 px-3 pb-2 flex flex-wrap gap-1.5">
+            <div className="shrink-0 px-4 pb-2 flex flex-wrap gap-1.5 bg-slate-50/30">
               {QUICK_PROMPTS.slice(0, 4).map(q => (
                 <button
                   key={q}
                   onClick={() => send(q)}
-                  className="text-[11px] bg-indigo-800/50 hover:bg-indigo-700/60 text-indigo-200 border border-indigo-600/40 rounded-full px-2.5 py-1 transition-colors leading-snug"
+                  className="text-[10px] font-bold bg-white hover:bg-slate-50 text-slate-500 border border-slate-200 rounded-full px-3 py-1.5 transition-all shadow-sm active:scale-95"
                 >
                   {q}
                 </button>
@@ -220,26 +220,31 @@ export default function Chatbot() {
           )}
 
           {/* Input row */}
-          <div className="shrink-0 px-3 pb-3 pt-2 border-t border-indigo-800/30 flex gap-2">
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
-              placeholder="Ask about your fleet..."
-              disabled={loading}
-              className="flex-1 bg-indigo-900/40 border border-indigo-700/30 text-white placeholder-indigo-300/50 text-sm rounded-xl px-3 py-2 outline-none focus:border-indigo-500/60 transition-colors disabled:opacity-50"
-            />
-            <button
-              onClick={() => send(input)}
-              disabled={loading || !input.trim()}
-              className="bg-gradient-to-br from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 disabled:opacity-40 text-white rounded-xl px-3.5 py-2 transition-all font-medium text-sm active:scale-95"
-            >
-              {loading
-                ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
-                : '↑'
-              }
-            </button>
+          <div className="shrink-0 px-4 pb-6 pt-4 border-t border-slate-100 flex flex-col gap-3 bg-white">
+            <div className="flex gap-2">
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send(input)}
+                placeholder="Message SmartChain AI..."
+                disabled={loading}
+                className="flex-1 bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-sm rounded-2xl px-4 py-3 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all disabled:opacity-50"
+              />
+              <button
+                onClick={() => send(input)}
+                disabled={loading || !input.trim()}
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-2xl px-4 py-3 transition-all font-bold text-sm active:scale-95 shadow-lg shadow-indigo-100 flex items-center justify-center min-w-[50px]"
+              >
+                {loading
+                  ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                  : <span className="text-xl">↑</span>
+                }
+              </button>
+            </div>
+            <p className="text-center text-[9px] font-bold text-slate-300 uppercase tracking-widest">
+              AI analysis may vary based on live telemetry
+            </p>
           </div>
         </div>
       )}

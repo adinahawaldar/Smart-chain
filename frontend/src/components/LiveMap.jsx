@@ -1,258 +1,269 @@
-import { useState, useCallback, useRef } from 'react'
-import { GoogleMap, useJsApiLoader, Polyline, Marker, InfoWindow, OverlayView } from '@react-google-maps/api'
-import { getRiskPolylineColor, getRiskBand } from '../utils/risk'
-import { fmtEta, fmtSpeed, fmtProgress, fmtTemp } from '../utils/format'
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Globe from 'react-globe.gl';
+import { getRiskBand } from '../utils/risk';
+import { fmtEta, fmtSpeed, fmtProgress, fmtTemp } from '../utils/format';
+import { api } from '../api/endpoints';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, Zap, ArrowRight, DollarSign, Clock, ShieldCheck, Info } from 'lucide-react';
 
-const MAP_CENTER  = { lat: 20.5937, lng: 78.9629 }
-const MAP_OPTIONS = {
-  disableDefaultUI: true,
-  zoomControl: true,
-  fullscreenControl: true,
-  gestureHandling: 'cooperative',
-  styles: [
-    { elementType: 'geometry',                        stylers: [{ color: '#f1f5f9' }] },
-    { elementType: 'labels.text.fill',                stylers: [{ color: '#64748b' }] },
-    { elementType: 'labels.text.stroke',              stylers: [{ color: '#f8fafc' }] },
-    { featureType: 'water',   elementType: 'geometry',stylers: [{ color: '#bfdbfe' }] },
-    { featureType: 'water',   elementType: 'labels.text.fill', stylers: [{ color: '#3b82f6' }] },
-    { featureType: 'road',    elementType: 'geometry',stylers: [{ color: '#ffffff' }] },
-    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#e2e8f0' }] },
-    { featureType: 'poi',     elementType: 'labels',  stylers: [{ visibility: 'off' }] },
-    { featureType: 'transit', elementType: 'labels',  stylers: [{ visibility: 'off' }] },
-    { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#cbd5e1' }] },
-    { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#f8fafc' }] },
-  ],
-}
+// Major logistics hubs / country labels for a better "Global" feel
+const COUNTRY_LABELS = [
+  { lat: 20.5937, lng: 78.9629, name: 'India', color: '#64748b', size: 1.2 },
+  { lat: 35.8617, lng: 104.1954, name: 'China', color: '#64748b', size: 1.2 },
+  { lat: 37.0902, lng: -95.7129, name: 'USA', color: '#64748b', size: 1.2 },
+  { lat: 55.3781, lng: -3.4360, name: 'UK', color: '#64748b', size: 1.0 },
+  { lat: 25.2744, lng: 133.7751, name: 'Australia', color: '#64748b', size: 1.2 },
+  { lat: -14.2350, lng: -51.9253, name: 'Brazil', color: '#64748b', size: 1.2 },
+  { lat: 23.8859, lng: 45.0792, name: 'Saudi Arabia', color: '#64748b', size: 1.0 },
+  { lat: 1.3521, lng: 103.8198, name: 'Singapore', color: '#64748b', size: 0.8 },
+  { lat: 25.2048, lng: 55.2708, name: 'UAE', color: '#64748b', size: 0.8 },
+  { lat: 52.1326, lng: 5.2913, name: 'Netherlands', color: '#64748b', size: 0.8 },
+];
 
-function TruckOverlay({ shipment, isSelected, onClick }) {
-  const band    = getRiskBand(shipment.riskScore)
-  const isHigh  = shipment.riskScore >= 75
+export default function LiveMap({ shipments, onReroute }) {
+  const globeRef = useRef();
+  const [selected, setSelected] = useState(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [windowSize, setWindowSize] = useState({ 
+    width: typeof window !== 'undefined' ? window.innerWidth : 1200, 
+    height: 500 
+  });
+
+  // Filter valid routable shipments
+  const routable = useMemo(() => 
+    shipments.filter(s => s.currentPosition && s.source && s.destination),
+    [shipments]
+  );
+
+  // Map arcs (routes)
+  const arcsData = useMemo(() => routable.map(s => {
+    const band = getRiskBand(s.riskScore);
+    const start = s.route && s.route.length > 0 ? s.route[0] : s.currentPosition;
+    const end = s.route && s.route.length > 0 ? s.route[s.route.length - 1] : s.currentPosition;
+
+    return {
+      startLat: start.lat,
+      startLng: start.lng,
+      endLat: end.lat,
+      endLng: end.lng,
+      color: band.color,
+      name: `${s.id}: ${s.source} → ${s.destination}`,
+      risk: s.riskScore
+    };
+  }), [routable]);
+
+  // Combined labels for Countries and Shipments
+  const combinedLabels = useMemo(() => {
+    const shipmentLabels = routable.map(s => {
+      const band = getRiskBand(s.riskScore);
+      return {
+        lat: s.currentPosition.lat,
+        lng: s.currentPosition.lng,
+        name: `ID: ${s.id}`,
+        color: band.color,
+        size: 0.8,
+        shipment: s,
+        isShipment: true
+      };
+    });
+
+    return [...COUNTRY_LABELS, ...shipmentLabels];
+  }, [routable]);
+
+  // Points (Live vehicle glow)
+  const pointsData = useMemo(() => routable.map(s => {
+    const band = getRiskBand(s.riskScore);
+    return {
+      lat: s.currentPosition.lat,
+      lng: s.currentPosition.lng,
+      size: s.active ? 0.6 : 0.2,
+      color: band.color,
+      shipment: s
+    };
+  }), [routable]);
+
+  // Handle resizing
+  const containerRef = useRef();
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setWindowSize({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight
+        });
+      }
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  useEffect(() => {
+    if (globeRef.current) {
+      const controls = globeRef.current.controls();
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = isHovered ? 2.5 : 0.5;
+      controls.enablePan = true;
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      if (!selected) {
+        globeRef.current.pointOfView({ lat: 20, lng: 70, altitude: 2.0 }, 1000);
+      }
+    }
+  }, [isHovered]);
+
+  // Handle Reroute Click
+  const handleRerouteAI = () => {
+    if (!selected) return;
+    onReroute(selected);
+  };
+
+  const handleReset = () => {
+    if (globeRef.current) {
+      globeRef.current.pointOfView({ lat: 20, lng: 70, altitude: 2.0 }, 1000);
+    }
+  };
 
   return (
-    <OverlayView
-      position={shipment.currentPosition}
-      mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+    <div 
+      ref={containerRef} 
+      className="w-full h-full relative overflow-hidden bg-gradient-to-br from-[#f8fafc] to-[#eef2ff]"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <div
-        style={{ transform: 'translate(-50%, -50%)', cursor: 'pointer', position: 'relative', width: 40, height: 40 }}
-        onClick={onClick}
-      >
-        {/* Pulse ring for high-risk */}
-        {isHigh && (
-          <span
-            className="pulse-ring"
-            style={{
-              position: 'absolute', top: '50%', left: '50%',
-              transform: 'translate(-50%,-50%)',
-              width: 36, height: 36, borderRadius: '50%',
-              border: '2px solid #EF4444', opacity: 0.7,
-              pointerEvents: 'none',
-            }}
-          />
-        )}
-        {/* Truck arrow */}
-        <div
-          style={{
-            position: 'absolute', top: '50%', left: '50%',
-            transform: `translate(-50%,-50%) rotate(${shipment.headingDeg}deg)`,
-            width: 30, height: 30, borderRadius: '50%',
-            background: isSelected ? '#1e1b4b' : band.color,
-            border: '2.5px solid white',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'background 0.2s',
-          }}
-        >
-          <svg viewBox="0 0 20 20" fill="white" width="13" height="13">
-            <path d="M10 2 L16 17 L10 12.5 L4 17 Z" />
-          </svg>
-        </div>
-        {/* ID label */}
-        <div
-          style={{
-            position: 'absolute', top: '100%', left: '50%',
-            transform: 'translateX(-50%) translateY(2px)',
-            background: 'rgba(255,255,255,0.92)', borderRadius: 4,
-            padding: '1px 5px', fontSize: 10, fontWeight: 700,
-            color: '#1e293b', whiteSpace: 'nowrap',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-            pointerEvents: 'none',
-          }}
-        >
-          {shipment.id}
-        </div>
+      <Globe
+        ref={globeRef}
+        width={windowSize.width}
+        height={windowSize.height}
+        backgroundColor="rgba(0,0,0,0)"
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        
+        // Arcs
+        arcsData={arcsData}
+        arcColor="color"
+        arcDashLength={0.4}
+        arcDashGap={2}
+        arcDashAnimateTime={2000}
+        arcStroke={0.6}
+        
+        // Points
+        pointsData={pointsData}
+        pointColor="color"
+        pointAltitude={0.01}
+        pointRadius="size"
+        pointsMerge={false}
+        onPointClick={(pt) => {
+          setSelected(pt.shipment);
+          globeRef.current.pointOfView({ lat: pt.lat, lng: pt.lng, altitude: 1.5 }, 1000);
+        }}
+        
+        // Labels (Countries + Shipments)
+        labelsData={combinedLabels}
+        labelLat="lat"
+        labelLng="lng"
+        labelText="name"
+        labelSize="size"
+        labelDotRadius={0.3}
+        labelColor={d => d.isShipment ? d.color : d.color}
+        labelResolution={2}
+        onLabelClick={d => {
+          if (d.isShipment) {
+            setSelected(d.shipment);
+            globeRef.current.pointOfView({ lat: d.lat, lng: d.lng, altitude: 1.5 }, 1000);
+          }
+        }}
+      />
+
+      {/* Control Overlays */}
+      <div className="absolute top-4 left-6 pointer-events-none z-10">
+        <h3 className="text-slate-900 font-black text-sm uppercase tracking-widest flex items-center gap-2">
+          <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+          Global Fleet Telemetric Sphere
+        </h3>
+        <p className="text-slate-400 text-[10px] font-bold uppercase mt-1">Real-time Orbital Monitoring</p>
       </div>
-    </OverlayView>
-  )
-}
 
-function MapFallback({ shipments }) {
-  const active = shipments.filter(s => s.active)
-  return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-100 to-indigo-50">
-      <div className="text-5xl mb-4">🗺️</div>
-      <p className="text-slate-700 font-semibold text-lg">Google Maps API Key Required</p>
-      <p className="text-slate-400 text-sm mt-1 text-center max-w-xs">
-        Add <code className="bg-white px-1.5 py-0.5 rounded text-indigo-600 font-mono text-xs">VITE_GOOGLE_MAPS_API_KEY</code> to{' '}
-        <code className="bg-white px-1.5 py-0.5 rounded font-mono text-xs">frontend/.env</code>
-      </p>
-      <div className="mt-8 grid grid-cols-2 gap-3 text-xs text-slate-500 px-6 w-full max-w-md">
-        {active.map(s => {
-          const band = getRiskBand(s.riskScore)
-          return (
-            <div key={s.id} className="bg-white/80 rounded-xl p-3 border border-slate-200">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-bold text-slate-700">{s.id}</span>
-                <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-md ${band.bg} ${band.text}`}>
-                  {s.riskScore}
-                </span>
-              </div>
-              <div className="text-slate-500">{s.source} → {s.destination}</div>
-              <div className="mt-1.5 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                <div className="h-full rounded-full bg-indigo-400" style={{ width: `${Math.round(s.progressPct)}%` }} />
-              </div>
-              <div className="flex justify-between mt-1 text-[11px]">
-                <span className="text-indigo-600 font-medium">{Math.round(s.progressPct)}%</span>
-                <span className="text-slate-400">ETA {fmtEta(s.etaMinutes)}</span>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-export default function LiveMap({ shipments }) {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-  const [selected, setSelected] = useState(null)
-  const mapRef = useRef(null)
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: apiKey || '',
-    id: 'smartchain-map',
-  })
-
-  const onLoad = useCallback(map => { mapRef.current = map }, [])
-
-  if (!apiKey || apiKey === 'your_google_maps_api_key_here') {
-    return <MapFallback shipments={shipments} />
-  }
-
-  if (loadError) return (
-    <div className="w-full h-full flex items-center justify-center bg-red-50">
-      <p className="text-red-500 text-sm">Map failed to load. Check your API key and domain restrictions.</p>
-    </div>
-  )
-
-  if (!isLoaded) return (
-    <div className="w-full h-full flex items-center justify-center bg-slate-50 animate-pulse">
-      <p className="text-slate-400 text-sm">Loading map...</p>
-    </div>
-  )
-
-  const routable = shipments.filter(s => s.currentPosition && s.route?.length >= 2)
-
-  return (
-    <GoogleMap
-      mapContainerStyle={{ width: '100%', height: '100%' }}
-      center={MAP_CENTER}
-      zoom={5}
-      options={MAP_OPTIONS}
-      onLoad={onLoad}
-    >
-      {/* Route polylines */}
-      {routable.map(s => (
-        <Polyline
-          key={`route-${s.id}`}
-          path={s.route}
-          options={{
-            strokeColor:   getRiskPolylineColor(s.riskScore),
-            strokeOpacity: 0.5,
-            strokeWeight:  3.5,
-            geodesic:      true,
-          }}
-        />
-      ))}
-
-      {/* Origin markers */}
-      {routable.map(s => (
-        <Marker
-          key={`orig-${s.id}`}
-          position={s.route[0]}
-          title={`${s.source} (origin)`}
-          icon={{
-            path:         window.google.maps.SymbolPath.CIRCLE,
-            fillColor:    '#6366F1',
-            fillOpacity:  0.9,
-            strokeColor:  '#fff',
-            strokeWeight: 2,
-            scale:        5,
-          }}
-        />
-      ))}
-
-      {/* Destination markers */}
-      {routable.map(s => (
-        <Marker
-          key={`dest-${s.id}`}
-          position={s.route[s.route.length - 1]}
-          title={`${s.destination} (destination)`}
-          icon={{
-            path:         window.google.maps.SymbolPath.CIRCLE,
-            fillColor:    '#10B981',
-            fillOpacity:  0.9,
-            strokeColor:  '#fff',
-            strokeWeight: 2,
-            scale:        5,
-          }}
-        />
-      ))}
-
-      {/* Moving truck overlays */}
-      {routable.filter(s => s.active).map(s => (
-        <TruckOverlay
-          key={`truck-${s.id}`}
-          shipment={s}
-          isSelected={selected?.id === s.id}
-          onClick={() => setSelected(prev => prev?.id === s.id ? null : s)}
-        />
-      ))}
-
-      {/* Info window */}
-      {selected && selected.currentPosition && (
-        <InfoWindow
-          position={selected.currentPosition}
-          onCloseClick={() => setSelected(null)}
-          options={{ pixelOffset: new window.google.maps.Size(0, -40) }}
+      <div className="absolute bottom-4 left-6 flex gap-2 z-10">
+        <button 
+          onClick={handleReset}
+          className="bg-white/80 hover:bg-white text-slate-800 text-[10px] font-black px-4 py-2 rounded-lg border border-slate-200 shadow-sm transition-all active:scale-95 uppercase tracking-tighter"
         >
-          <div style={{ minWidth: 200, padding: 4 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 8, color: '#1e293b' }}>
-              {selected.id}
+          Reset View
+        </button>
+      </div>
+
+      {/* Selected Details Overlay */}
+      {selected && (
+        <div className="absolute bottom-6 left-6 right-6 lg:left-auto lg:right-6 lg:w-80 glass p-6 rounded-2xl z-[100] border border-slate-200 text-slate-900 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h4 className="text-xl font-black text-slate-800">{selected.id}</h4>
+              <p className="text-indigo-600 text-[10px] font-bold uppercase tracking-widest">{selected.vehicleId}</p>
             </div>
-            <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-              <tbody>
-                {[
-                  ['Route',    `${selected.source} → ${selected.destination}`],
-                  ['Status',   selected.status],
-                  ['Risk',     `${selected.riskScore}/100`],
-                  ['ETA',      fmtEta(selected.etaMinutes)],
-                  ['Progress', fmtProgress(selected.progressPct)],
-                  ['Speed',    fmtSpeed(selected.speedKmph * (selected.speedFactor || 1))],
-                  ['Cargo',    selected.cargoType],
-                  ['Temp',     fmtTemp(selected.temperatureC)],
-                  ['Vehicle',  selected.vehicleId],
-                ].map(([k, v]) => (
-                  <tr key={k} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '4px 8px 4px 0', color: '#94a3b8', fontWeight: 500 }}>{k}</td>
-                    <td style={{ padding: '4px 0', color: '#334155', textAlign: 'right' }}>{v}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <button onClick={(e) => { e.stopPropagation(); setSelected(null); }} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
-        </InfoWindow>
+
+          <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-xs">
+            <div>
+              <p className="text-slate-400 uppercase font-black text-[9px] mb-1">Status</p>
+              <p className="font-bold flex items-center gap-1.5 text-slate-700">
+                <span className={`w-1.5 h-1.5 rounded-full ${selected.active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                {selected.status}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-400 uppercase font-black text-[9px] mb-1">Speed</p>
+              <p className="font-bold text-slate-700">{fmtSpeed(selected.speedKmph * (selected.speedFactor || 1))}</p>
+            </div>
+            <div className="col-span-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+              <p className="text-slate-400 uppercase font-black text-[9px] mb-1">Route</p>
+              <p className="font-bold truncate text-slate-800">{selected.source} → {selected.destination}</p>
+            </div>
+            <div>
+              <p className="text-slate-400 uppercase font-black text-[9px] mb-1">ETA</p>
+              <p className="font-bold text-indigo-600">{fmtEta(selected.etaMinutes)}</p>
+            </div>
+            <div>
+              <p className="text-slate-400 uppercase font-black text-[9px] mb-1">Risk Score</p>
+              <div className="flex items-center gap-2">
+                <span className={`font-bold ${selected.riskScore > 70 ? 'text-red-500' : 'text-emerald-600'}`}>
+                  {selected.riskScore}
+                </span>
+                <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-slate-800 transition-all" style={{ width: `${selected.riskScore}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {selected.riskScore >= 70 && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); handleRerouteAI(); }}
+              className="w-full mt-6 bg-indigo-600 text-white font-black py-3 rounded-xl text-[11px] uppercase tracking-widest hover:bg-indigo-700 transition-all active:scale-95 shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
+            >
+              <Zap size={14} />
+              Reroute with AI
+            </button>
+          )}
+
+          <button className="w-full mt-3 bg-slate-900 text-white font-black py-3 rounded-xl text-[11px] uppercase tracking-widest hover:bg-slate-800 transition-colors active:scale-95 shadow-lg shadow-slate-200">
+            Intercept Transmission
+          </button>
+        </div>
       )}
-    </GoogleMap>
-  )
+
+      {/* Minimalism Legend */}
+      <div className="absolute top-4 right-6 pointer-events-none flex gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider">
+        <div className="flex items-center gap-1.5"><span className="w-2 h-0.5 bg-red-500 rounded-full" /> Critical</div>
+        <div className="flex items-center gap-1.5"><span className="w-2 h-0.5 bg-yellow-500 rounded-full" /> Alert</div>
+        <div className="flex items-center gap-1.5"><span className="w-2 h-0.5 bg-blue-600 rounded-full" /> Optimal</div>
+      </div>
+    </div>
+  );
 }
