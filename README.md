@@ -157,7 +157,7 @@ uvicorn main:app --reload --port 8001
 ```
 
 
-### 1. AI Service (Python)
+### 2. Backend
 ```bash
 
 cd backend
@@ -165,7 +165,7 @@ npm install
 npm run dev 
 
 ```
-### 1. AI Service (Python)
+### 3. Frontend
 ```bash
 
 cd frontend
