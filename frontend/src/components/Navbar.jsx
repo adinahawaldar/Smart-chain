@@ -1,11 +1,28 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Dashboard');
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const navLinks = ['Home', 'Dashboard', 'Shipments', 'Simulation'];
+
+  const navLinks = [
+    { label: 'Home', path: '/' },
+    { label: 'Dashboard', path: '/dashboardpage' },
+    { label: 'Shipments', path: '/maps' },
+    { label: 'Simulation', path: '/demo' },
+  ];
+
+  const getActiveTab = () => {
+    const match = navLinks.find(link => location.pathname === link.path);
+    return match ? match.label : 'Home';
+  };
+
+  const activeTab = getActiveTab();
+
+  const handleNav = (path, label) => {
+    navigate(path);
+  };
 
   return (
     <nav className="absolute top-0 left-0 w-full z-50 font-sans">
@@ -25,15 +42,15 @@ const Navbar = () => {
         <div className="hidden md:flex items-center space-x-12">
           {navLinks.map((link) => (
             <button
-              key={link}
-              onClick={() => setActiveTab(link)}
+              key={link.label}
+              onClick={() => handleNav(link.path, link.label)}
               className={`text-xs uppercase tracking-[0.2em] font-bold transition-all pb-1 border-b-2 ${
-                activeTab === link 
+                activeTab === link.label 
                 ? 'text-white border-white' 
                 : 'text-white/50 hover:text-white border-transparent'
               }`}
             >
-              {link}
+              {link.label}
             </button>
           ))}
         </div>
@@ -61,11 +78,11 @@ const Navbar = () => {
         <div className="md:hidden bg-black/95 backdrop-blur-2xl px-8 py-6 flex flex-col space-y-6">
           {navLinks.map((link) => (
             <button 
-              key={link} 
-              onClick={() => { setActiveTab(link); setIsMenuOpen(false); }}
+              key={link.label} 
+              onClick={() => { handleNav(link.path, link.label); setIsMenuOpen(false); }}
               className="text-left text-xs uppercase tracking-widest font-bold text-white/70 hover:text-white"
             >
-              {link}
+              {link.label}
             </button>
           ))}
           <button 
